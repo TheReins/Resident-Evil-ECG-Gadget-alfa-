@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ECG - Resident Evil Status</title>
+    <style>
+        body {
+            background-color: #0d0d0d;
+            color: #ffffff;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        .container {
+            text-align: center;
+            border: 2px solid #333;
+            padding: 20px;
+            border-radius: 10px;
+            background: #111;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            width: 90%;
+            max-width: 400px;
+        }
+        canvas {
+            background: #000;
+            border-radius: 5px;
+            width: 100%;
+            height: 120px;
+        }
+        .status-text {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-top: 15px;
+            letter-spacing: 2px;
+        }
+        .fine { color: #00ff00; text-shadow: 0 0 10px #00ff00; }
+        .caution { color: orange; text-shadow: 0 0 10px orange; }
+        .danger { color: #ff0000; text-shadow: 0 0 10px #ff0000; animation: blink 0.5s infinite alternate; }
+        
+        @keyframes blink {
+            from { opacity: 1; }
+            to { opacity: 0.3; }
+        }
+        .battery-info {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h3>SEÑAL VITAL - U.M.B.R.E.L.L.A.</h3>
+    <canvas id="ecgCanvas" width="350" height="120"></canvas>
+    <div id="statusText" class="status-text fine">FINE</div>
+    <div id="batteryInfo" class="battery-info">Batería: --%</div>
+</div>
+
+<script>
+    const canvas = document.getElementById('ecgCanvas');
+    const ctx = canvas.getContext('2d');
+    const statusText = document.getElementById('statusText');
+    const batteryInfo = document.getElementById('batteryInfo');
+
+    let x = 0;
+    let y = 60;
+    let batteryLevel = 100;
+    let speed = 2;
+    let currentStatus = 'FINE';
+
+    // Obtener estado de la batería del dispositivo
+    if ('getBattery' in navigator) {
+        navigator.getBattery().then(battery => {
+            updateBattery(battery);
+            battery.addEventListener('levelchange', () => updateBattery(battery));
+            battery.addEventListener('chargingchange', () => updateBattery(battery));
+        });
+    }
+
+    function updateBattery(battery) {
+        batteryLevel = Math.round(battery.level * 100);
+        batteryInfo.innerText = `Batería: ${batteryLevel}% ${battery.charging ? '(Cargando)' : ''}`;
+
+        // Lógica de estados estilo Resident Evil basada en la batería
+        if (batteryLevel > 50) {
+            currentStatus = 'FINE';
+            statusText.className = 'status-text fine';
+            speed = 2;
+        } else if (batteryLevel > 20) {
+            currentStatus = 'CAUTION';
+            statusText.className = 'status-text caution';
+            speed = 3;
+        } else {
+            currentStatus = 'DANGER';
+            statusText.className = 'status-text danger';
+            speed = 4;
+        }
+    }
+
+    function drawECG() {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.strokeStyle = statusText.style.color || "#00ff00";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+
+        // Patrón de latido según estado
+        let nextX = x + speed;
+        let nextY = 60;
+
+        if (x % 150 > 100 && x % 150 < 110) {
+            nextY = currentStatus === 'DANGER' ? 10 : (currentStatus === 'CAUTION' ? 30 : 20);
+        } else if (x % 150 >= 110 && x % 150 < 120) {
+            nextY = currentStatus === 'DANGER' ? 110 : 100;
+        } else {
+            nextY = 60 + (Math.random() * 4 - 2); // Pequeña fluctuación natural
+        }
+
+        ctx.lineTo(nextX, nextY);
+        ctx.stroke();
+
+        x = nextX;
+        y = nextY;
+
+        if (x > canvas.width) {
+            x = 0;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        requestAnimationFrame(drawECG);
+    }
+
+    drawECG();
+</script>
+
+</body>
+</html>
